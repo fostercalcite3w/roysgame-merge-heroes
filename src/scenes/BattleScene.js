@@ -48,6 +48,7 @@ export class BattleScene extends Phaser.Scene {
   onDirection(dr, dc) {
     if (this.gameState.phase !== 'playing') return;
     if (this.gameState.selection) {
+      this.lastMoveFrom = `${this.gameState.selection.row},${this.gameState.selection.col}`;
       const result = this.gameState.attemptMove(dr, dc);
       if (result.moved) this.animateMoveAndMerges(result);
     } else {
@@ -68,16 +69,120 @@ export class BattleScene extends Phaser.Scene {
   }
 
   animateMoveAndMerges(result) {
-    // Task 7 會加平滑 tween；此版直接 renderAll
+    const { merges } = result;
+    const fromKey = this.lastMoveFrom;
+    const toKey = this.gameState.selection
+      ? `${this.gameState.selection.row},${this.gameState.selection.col}`
+      : null;
+
     this.renderAll();
-    this.drawCursor();
+    if (fromKey && toKey) this.tweenMoveSprites(fromKey, toKey);
+
     this.drawSelection();
-    if (result.merges.length > 0) {
-      // 合成已在 attemptMove 內完成，這裡只重畫
+    this.drawCursor();
+
+    if (merges.length > 0) {
+      this.time.delayedCall(150, () => this.playMergeAnimations(merges));
+    }
+  }
+
+  tweenMoveSprites(fromKey, toKey) {
+    const [fr, fc] = fromKey.split(',').map(Number);
+    const [tr, tc] = toKey.split(',').map(Number);
+
+    const toSprite = this.heroSprites.get(toKey);
+    const fromSprite = this.heroSprites.get(fromKey);
+
+    if (toSprite) {
+      const fromPos = this.cellCenter(fr, fc);
+      const toPos = this.cellCenter(tr, tc);
+      toSprite.container.setPosition(fromPos.x, fromPos.y);
+      this.tweens.add({
+        targets: toSprite.container,
+        x: toPos.x,
+        y: toPos.y,
+        duration: 180,
+        ease: 'Cubic.easeOut',
+      });
+    }
+    if (fromSprite) {
+      const fromPos = this.cellCenter(tr, tc);
+      const toPos = this.cellCenter(fr, fc);
+      fromSprite.container.setPosition(fromPos.x, fromPos.y);
+      this.tweens.add({
+        targets: fromSprite.container,
+        x: toPos.x,
+        y: toPos.y,
+        duration: 180,
+        ease: 'Cubic.easeOut',
+      });
+    }
+  }
+
+  playMergeAnimations(merges) {
+    for (const { result } of merges) {
+      const { row, col } = result.placedAt;
+      const key = `${row},${col}`;
+      const sprite = this.heroSprites.get(key);
+      if (!sprite) continue;
+
+      const { x, y } = this.cellCenter(row, col);
+      const tierColor = this.getTierColor(result.hero.tier);
+      const cellSize = this.getLayout().cellSize;
+
+      const flash = this.add.circle(x, y, cellSize * 0.55, tierColor, 0.85).setDepth(20);
+      this.tweens.add({
+        targets: flash,
+        alpha: 0,
+        scale: 1.8,
+        duration: 360,
+        ease: 'Cubic.easeOut',
+        onComplete: () => flash.destroy(),
+      });
+      this.tweens.add({
+        targets: sprite.container,
+        scale: 1.18,
+        duration: 120,
+        yoyo: true,
+        ease: 'Sine.easeInOut',
+      });
+      this.playMergeParticles(x, y, tierColor);
+    }
+    this.time.delayedCall(420, () => {
       this.renderAll();
       this.drawSelection();
       this.drawCursor();
+    });
+  }
+
+  playMergeParticles(x, y, colorInt) {
+    const count = 12;
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2;
+      const dx = Math.cos(angle) * 6;
+      const dy = Math.sin(angle) * 6;
+      const p = this.add.circle(x, y, 5, colorInt, 1).setDepth(22);
+      this.tweens.add({
+        targets: p,
+        x: x + dx * 14,
+        y: y + dy * 14,
+        alpha: 0,
+        duration: 480,
+        ease: 'Cubic.easeOut',
+        onComplete: () => p.destroy(),
+      });
     }
+  }
+
+  getTierColor(tier) {
+    const map = {
+      epic: 0xc389ff,
+      legendary: 0xffd56b,
+      mythic: 0xff9f6b,
+      secret: 0x7afff2,
+      base: 0xffffff,
+    };
+    return map[tier] ?? 0xffffff;
   }
 
   getLayout() {

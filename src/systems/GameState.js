@@ -5,6 +5,7 @@ import { generateInitialHeroes } from './initialSpawn.js';
 import { findMergeGroups } from './MergeDetector.js';
 import { executeMerge } from './MergeExecutor.js';
 import { spawnWave } from './MonsterSpawner.js';
+import { nextCell, hasReachedCastle } from './MonsterPath.js';
 import { BASE_HEROES } from '../data/heroes.js';
 import { getWave } from '../data/waves.js';
 
@@ -107,7 +108,30 @@ export class GameState {
 
   // Task 10 接怪物移動 — 暫留簽名
   tickMonsters(dtMs) {
-    return { damaged: [], removed: [] };
+    const damaged = [];
+    const removed = [];
+    for (const m of this.monsters) {
+      const msPerStep = 1000 / (m.speed || 1);
+      this.monsterStepMs[m.id] = (this.monsterStepMs[m.id] || 0) + dtMs;
+      while (this.monsterStepMs[m.id] >= msPerStep) {
+        this.monsterStepMs[m.id] -= msPerStep;
+        if (m.stun_until && m.stun_until > this.nowMs) continue;
+        const next = nextCell(m, this.grid);
+        m.position = next;
+        if (hasReachedCastle(m)) {
+          this.castle.damage(m.attack);
+          damaged.push(m);
+          removed.push(m.id);
+          break;
+        }
+      }
+    }
+    if (removed.length) {
+      this.monsters = this.monsters.filter((mm) => !removed.includes(mm.id));
+      for (const id of removed) delete this.monsterStepMs[id];
+    }
+    this.checkGameOver();
+    return { damaged, removed };
   }
 
   // Task 11 接戰鬥 — 暫留簽名

@@ -260,6 +260,56 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
+  update(time, delta) {
+    if (this.gameState.phase !== 'playing') return;
+    this.gameState._bumpNow(delta);
+    const res = this.gameState.tickMonsters(delta);
+    if (res.damaged.length) this.flashCastleDamage();
+    this.syncMonsterPositions();
+    this.refreshHUD();
+    if (this.gameState.phase === 'gameover') {
+      if (this.scene.manager.keys['GameOverScene']) {
+        this.scene.start('GameOverScene', { waves: this.gameState.wave - 1, victory: false });
+      } else {
+        this.scene.pause();
+      }
+    }
+  }
+
+  syncMonsterPositions() {
+    for (const m of this.gameState.monsters) {
+      let sprite = this.monsterSprites.get(m.id);
+      if (!sprite) {
+        this.renderOneMonster(m);
+        sprite = this.monsterSprites.get(m.id);
+      }
+      const { x, y } = this.monsterPixel(m);
+      if (Math.abs(sprite.x - x) > 1 || Math.abs(sprite.y - y) > 1) {
+        this.tweens.killTweensOf(sprite);
+        this.tweens.add({ targets: sprite, x, y, duration: 250, ease: 'Linear' });
+      }
+      if (sprite.hpFill) {
+        const pct = Math.max(0, Math.min(1, m.hp / sprite.maxHp));
+        sprite.hpFill.displayWidth = sprite.hpFill.width * pct;
+        sprite.hpFill.setVisible(pct < 1);
+        sprite.hpBar.setVisible(pct < 1);
+      }
+    }
+    const live = new Set(this.gameState.monsters.map((m) => m.id));
+    for (const [id, sprite] of this.monsterSprites.entries()) {
+      if (!live.has(id)) {
+        sprite.destroy();
+        this.monsterSprites.delete(id);
+      }
+    }
+  }
+
+  flashCastleDamage() {
+    const { width, height } = this.scale;
+    const flash = this.add.rectangle(width / 2, height / 2, width, height, 0xff2244, 0.25).setDepth(200);
+    this.tweens.add({ targets: flash, alpha: 0, duration: 240, onComplete: () => flash.destroy() });
+  }
+
   renderMonsters() {
     for (const m of this.gameState.monsters) {
       if (this.monsterSprites.has(m.id)) continue;

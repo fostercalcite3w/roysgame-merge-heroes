@@ -6,6 +6,7 @@ import { findMergeGroups } from './MergeDetector.js';
 import { executeMerge } from './MergeExecutor.js';
 import { spawnWave } from './MonsterSpawner.js';
 import { nextCell, hasReachedCastle } from './MonsterPath.js';
+import { CombatSystem } from './CombatSystem.js';
 import { BASE_HEROES } from '../data/heroes.js';
 import { getWave } from '../data/waves.js';
 
@@ -22,6 +23,7 @@ export class GameState {
     this.phase = 'playing';
     this.nowMs = 0;
     this.monsterStepMs = {};
+    this.combat = new CombatSystem();
   }
 
   start() {
@@ -136,7 +138,7 @@ export class GameState {
 
   // Task 11 接戰鬥 — 暫留簽名
   tickCombat(dtMs) {
-    return { hits: [], kills: [], stuns: [] };
+    return this.combat.tick(this, dtMs);
   }
 
   _bumpNow(dtMs) {

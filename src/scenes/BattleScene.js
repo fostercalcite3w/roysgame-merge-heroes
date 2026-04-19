@@ -263,6 +263,8 @@ export class BattleScene extends Phaser.Scene {
   update(time, delta) {
     if (this.gameState.phase !== 'playing') return;
     this.gameState._bumpNow(delta);
+    const combat = this.gameState.tickCombat(delta);
+    this.renderCombatHits(combat.hits);
     const res = this.gameState.tickMonsters(delta);
     if (res.damaged.length) this.flashCastleDamage();
     this.syncMonsterPositions();
@@ -273,6 +275,22 @@ export class BattleScene extends Phaser.Scene {
       } else {
         this.scene.pause();
       }
+    }
+  }
+
+  renderCombatHits(hits) {
+    for (const h of hits) {
+      const from = this.cellCenter(h.from.row, h.from.col);
+      const to = this.cellCenter(h.to.row, h.to.col);
+      const proj = this.add.circle(from.x, from.y, 7, 0xffe76b, 1).setDepth(30);
+      this.tweens.add({
+        targets: proj,
+        x: to.x,
+        y: to.y,
+        duration: 240,
+        ease: 'Cubic.easeIn',
+        onComplete: () => proj.destroy(),
+      });
     }
   }
 

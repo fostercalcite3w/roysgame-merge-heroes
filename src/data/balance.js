@@ -41,3 +41,10 @@ export const TIER_POWER = {
   mythic: 8,
   secret: 16,
 };
+
+export const COMBAT = {
+  heroAttackIntervalMs: 1500,
+  heroDamagePerPower: 10,
+  heroStunMs: 2000,
+  monsterStunIntervalMs: 1000,
+};

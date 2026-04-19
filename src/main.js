@@ -1,17 +1,7 @@
 import Phaser from 'phaser';
 import './ui/styles.css';
-
-class TitleScene extends Phaser.Scene {
-  constructor() { super('TitleScene'); }
-  create() {
-    const { width, height } = this.scale;
-    this.add.text(width * 0.5, height * 0.5, '合成王', {
-      fontFamily: 'Noto Sans TC, sans-serif',
-      fontSize: `${Math.floor(height * 0.15)}px`,
-      color: '#ffd56b',
-    }).setOrigin(0.5);
-  }
-}
+import { TitleScene } from './scenes/TitleScene.js';
+import { BattleScene } from './scenes/BattleScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -19,7 +9,7 @@ const config = {
   height: 720,
   parent: document.body,
   backgroundColor: '#0f1020',
-  scene: [TitleScene],
+  scene: [TitleScene, BattleScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

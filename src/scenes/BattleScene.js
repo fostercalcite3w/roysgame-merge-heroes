@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GameState } from '../systems/GameState.js';
 import { ELEMENT_COLORS, CLASS_ICONS, TIER_BADGES, LAYOUT } from '../data/visuals.js';
+import { TouchOverlay } from '../ui/TouchOverlay.js';
 
 export class BattleScene extends Phaser.Scene {
   constructor() { super('BattleScene'); }
@@ -20,10 +21,18 @@ export class BattleScene extends Phaser.Scene {
     this.drawSelection();
 
     this.bindKeyboard();
+    this.touchOverlay = new TouchOverlay({
+      onCellTap: (row, col) => this.onCellTap(row, col),
+    });
+    this.touchOverlay.show();
+    this.relayoutTouch();
 
     this.scale.on('resize', this.onResize, this);
+    this.scale.on('resize', this.relayoutTouch, this);
     this.events.once('shutdown', () => {
       this.scale.off('resize', this.onResize, this);
+      this.scale.off('resize', this.relayoutTouch, this);
+      this.touchOverlay?.destroy();
     });
   }
 
@@ -284,6 +293,7 @@ export class BattleScene extends Phaser.Scene {
     const L = this.getLayout();
     if (!this.gameState.selection) {
       if (this.selectionRect) this.selectionRect.setVisible(false);
+      if (this.touchOverlay) this.touchOverlay.highlightSelected(-1, -1);
       return;
     }
     const { row, col } = this.gameState.selection;
@@ -297,6 +307,47 @@ export class BattleScene extends Phaser.Scene {
       this.selectionRect.setSize(L.cellSize - 8, L.cellSize - 8);
       this.selectionRect.setVisible(true);
     }
+    if (this.touchOverlay) this.touchOverlay.highlightSelected(row, col);
+  }
+
+  relayoutTouch() {
+    if (!this.touchOverlay) return;
+    const L = this.getLayout();
+    const canvas = this.game.canvas;
+    const rect = canvas.getBoundingClientRect();
+    this.touchOverlay.layout({
+      cellSize: L.cellSize,
+      originX: L.originX,
+      originY: L.originY,
+      canvasRect: rect,
+      scaleMode: { width: 1280, height: 720 },
+    });
+  }
+
+  onCellTap(row, col) {
+    if (this.gameState.phase !== 'playing') return;
+    const sel = this.gameState.selection;
+    if (!sel) {
+      if (this.gameState.selectAt(row, col)) {
+        this.drawSelection();
+        this.drawCursor();
+      }
+      return;
+    }
+    const dr = row - sel.row, dc = col - sel.col;
+    if (dr === 0 && dc === 0) {
+      this.gameState.deselect();
+      this.drawSelection();
+      return;
+    }
+    if (Math.abs(dr) + Math.abs(dc) !== 1) {
+      this.gameState.deselect();
+      this.drawSelection();
+      return;
+    }
+    this.lastMoveFrom = `${sel.row},${sel.col}`;
+    const result = this.gameState.attemptMove(dr, dc);
+    if (result.moved) this.animateMoveAndMerges(result);
   }
 
   onResize() {
@@ -304,5 +355,6 @@ export class BattleScene extends Phaser.Scene {
     this.renderAll();
     this.drawCursor();
     this.drawSelection();
+    this.relayoutTouch();
   }
 }

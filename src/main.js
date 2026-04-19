@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import './ui/styles.css';
+import './ui/touch-overlay.css';
 import { TitleScene } from './scenes/TitleScene.js';
 import { BattleScene } from './scenes/BattleScene.js';
 

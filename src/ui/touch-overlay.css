@@ -1,0 +1,27 @@
+#touch-overlay {
+  position: fixed; inset: 0;
+  z-index: 120;
+  pointer-events: none;
+  touch-action: none;
+}
+#touch-overlay.is-open { display: block; }
+
+.touch-cell {
+  position: absolute;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  background: rgba(255, 255, 255, 0.001);
+  border-radius: 8px;
+}
+
+.touch-cell.is-selected {
+  background: rgba(122, 198, 255, 0.18);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.7);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .touch-cell { pointer-events: none; }
+}

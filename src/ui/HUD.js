@@ -19,4 +19,17 @@ export class HUD {
     }
     if (this.stepEl) this.stepEl.textContent = `步數 ${step} / ${stepThreshold}`;
   }
+
+  toast(text, durationMs = 1400) {
+    let el = document.getElementById('hud-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'hud-toast';
+      document.body.appendChild(el);
+    }
+    el.textContent = text;
+    el.classList.add('is-visible');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => el.classList.remove('is-visible'), durationMs);
+  }
 }

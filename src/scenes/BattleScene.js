@@ -32,6 +32,7 @@ export class BattleScene extends Phaser.Scene {
     this.hud.show();
     this.monsterSprites = new Map();
     this.refreshHUD();
+    this.lastWaveCleared = 0;
 
     this.scale.on('resize', this.onResize, this);
     this.scale.on('resize', this.relayoutTouch, this);
@@ -269,6 +270,25 @@ export class BattleScene extends Phaser.Scene {
     if (res.damaged.length) this.flashCastleDamage();
     this.syncMonsterPositions();
     this.refreshHUD();
+
+    // 波次清除偵測
+    if (
+      this.gameState.monsters.length === 0
+      && this.gameState.wave - 1 > this.lastWaveCleared
+    ) {
+      const cleared = this.gameState.wave - 1;
+      this.lastWaveCleared = cleared;
+      this.hud.toast(`第 ${cleared} 波通過！`);
+      if (cleared >= 10) {
+        if (this.scene.manager.keys['GameOverScene']) {
+          this.scene.start('GameOverScene', { victory: true, waves: cleared });
+        } else {
+          this.scene.pause();
+        }
+        return;
+      }
+    }
+
     if (this.gameState.phase === 'gameover') {
       if (this.scene.manager.keys['GameOverScene']) {
         this.scene.start('GameOverScene', { waves: this.gameState.wave - 1, victory: false });

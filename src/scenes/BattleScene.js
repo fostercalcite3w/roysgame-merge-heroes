@@ -9,14 +9,75 @@ export class BattleScene extends Phaser.Scene {
     this.gameState = new GameState();
     this.gameState.start();
 
-    this.heroSprites = new Map(); // key "r,c" → { container, rect, icon, badge }
+    this.heroSprites = new Map();
     this.cellSprites = [];
+    this.cursorRect = null;
+    this.selectionRect = null;
 
     this.drawLayout();
     this.renderAll();
+    this.drawCursor();
+    this.drawSelection();
+
+    this.bindKeyboard();
 
     this.scale.on('resize', this.onResize, this);
-    this.events.once('shutdown', () => this.scale.off('resize', this.onResize, this));
+    this.events.once('shutdown', () => {
+      this.scale.off('resize', this.onResize, this);
+    });
+  }
+
+  bindKeyboard() {
+    const on = (kc, fn) => this.input.keyboard.on(`keydown-${kc}`, fn);
+    on('W', () => this.onDirection(-1, 0));
+    on('S', () => this.onDirection(1, 0));
+    on('A', () => this.onDirection(0, -1));
+    on('D', () => this.onDirection(0, 1));
+    on('UP', () => this.onDirection(-1, 0));
+    on('DOWN', () => this.onDirection(1, 0));
+    on('LEFT', () => this.onDirection(0, -1));
+    on('RIGHT', () => this.onDirection(0, 1));
+    on('SPACE', () => this.onSelect());
+    on('ENTER', () => this.onSelect());
+    on('ESC', () => {
+      this.gameState.deselect();
+      this.drawSelection();
+    });
+  }
+
+  onDirection(dr, dc) {
+    if (this.gameState.phase !== 'playing') return;
+    if (this.gameState.selection) {
+      const result = this.gameState.attemptMove(dr, dc);
+      if (result.moved) this.animateMoveAndMerges(result);
+    } else {
+      this.gameState.moveCursor(dr, dc);
+      this.drawCursor();
+    }
+  }
+
+  onSelect() {
+    if (this.gameState.phase !== 'playing') return;
+    if (this.gameState.selection) {
+      this.gameState.deselect();
+    } else {
+      this.gameState.selectAtCursor();
+    }
+    this.drawSelection();
+    this.drawCursor();
+  }
+
+  animateMoveAndMerges(result) {
+    // Task 7 會加平滑 tween；此版直接 renderAll
+    this.renderAll();
+    this.drawCursor();
+    this.drawSelection();
+    if (result.merges.length > 0) {
+      // 合成已在 attemptMove 內完成，這裡只重畫
+      this.renderAll();
+      this.drawSelection();
+      this.drawCursor();
+    }
   }
 
   getLayout() {
@@ -100,8 +161,43 @@ export class BattleScene extends Phaser.Scene {
     this.heroSprites.set(`${row},${col}`, { container, rect, icon: iconText, badge });
   }
 
+  drawCursor() {
+    const L = this.getLayout();
+    const { row, col } = this.gameState.cursor;
+    const { x, y } = this.cellCenter(row, col);
+    if (!this.cursorRect) {
+      this.cursorRect = this.add.rectangle(x, y, L.cellSize - 8, L.cellSize - 8, 0x000000, 0)
+        .setStrokeStyle(3, LAYOUT.cursorStroke, 1)
+        .setDepth(5);
+    } else {
+      this.cursorRect.setPosition(x, y);
+      this.cursorRect.setSize(L.cellSize - 8, L.cellSize - 8);
+    }
+  }
+
+  drawSelection() {
+    const L = this.getLayout();
+    if (!this.gameState.selection) {
+      if (this.selectionRect) this.selectionRect.setVisible(false);
+      return;
+    }
+    const { row, col } = this.gameState.selection;
+    const { x, y } = this.cellCenter(row, col);
+    if (!this.selectionRect) {
+      this.selectionRect = this.add.rectangle(x, y, L.cellSize - 8, L.cellSize - 8, LAYOUT.selectFill, 0.28)
+        .setStrokeStyle(3, LAYOUT.selectStroke, 1)
+        .setDepth(6);
+    } else {
+      this.selectionRect.setPosition(x, y);
+      this.selectionRect.setSize(L.cellSize - 8, L.cellSize - 8);
+      this.selectionRect.setVisible(true);
+    }
+  }
+
   onResize() {
     this.drawLayout();
     this.renderAll();
+    this.drawCursor();
+    this.drawSelection();
   }
 }

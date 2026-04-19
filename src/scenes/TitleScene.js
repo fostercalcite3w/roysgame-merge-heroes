@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { gameAudio } from '../systems/Audio.js';
 
 export class TitleScene extends Phaser.Scene {
   constructor() { super('TitleScene'); }
@@ -13,6 +14,7 @@ export class TitleScene extends Phaser.Scene {
     overlay.classList.add('is-open');
 
     const handleStart = () => {
+      gameAudio.resume();
       overlay.classList.remove('is-open');
       startBtn.removeEventListener('click', handleStart);
       this.input.keyboard.off('keydown-ENTER', handleStart);

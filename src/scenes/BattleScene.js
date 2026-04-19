@@ -4,6 +4,7 @@ import { ELEMENT_COLORS, CLASS_ICONS, TIER_BADGES, LAYOUT, MONSTER_SKIN } from '
 import { STEPS } from '../data/balance.js';
 import { HUD } from '../ui/HUD.js';
 import { TouchOverlay } from '../ui/TouchOverlay.js';
+import { gameAudio } from '../systems/Audio.js';
 
 export class BattleScene extends Phaser.Scene {
   constructor() { super('BattleScene'); }
@@ -148,6 +149,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   playMergeAnimations(merges) {
+    gameAudio.play('merge');
     for (const { result } of merges) {
       const { row, col } = result.placedAt;
       const key = `${row},${col}`;
@@ -270,6 +272,7 @@ export class BattleScene extends Phaser.Scene {
     this.gameState._bumpNow(delta);
     const combat = this.gameState.tickCombat(delta);
     this.renderCombatHits(combat.hits);
+    if (combat.kills.length) gameAudio.play('monster_die');
     const res = this.gameState.tickMonsters(delta);
     if (res.damaged.length) this.flashCastleDamage();
     this.syncMonsterPositions();
@@ -283,7 +286,9 @@ export class BattleScene extends Phaser.Scene {
       const cleared = this.gameState.wave - 1;
       this.lastWaveCleared = cleared;
       this.hud.toast(`第 ${cleared} 波通過！`);
+      gameAudio.play('wave_clear');
       if (cleared >= 10) {
+        gameAudio.play('game_over');
         if (this.scene.manager.keys['GameOverScene']) {
           this.scene.start('GameOverScene', { victory: true, waves: cleared });
         } else {
@@ -294,6 +299,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.gameState.phase === 'gameover') {
+      gameAudio.play('game_over');
       if (this.scene.manager.keys['GameOverScene']) {
         this.scene.start('GameOverScene', { waves: this.gameState.wave - 1, victory: false });
       } else {
@@ -304,6 +310,7 @@ export class BattleScene extends Phaser.Scene {
 
   renderCombatHits(hits) {
     for (const h of hits) {
+      gameAudio.play('attack');
       const from = this.cellCenter(h.from.row, h.from.col);
       const to = this.cellCenter(h.to.row, h.to.col);
       const proj = this.add.circle(from.x, from.y, 7, 0xffe76b, 1).setDepth(30);
@@ -347,6 +354,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   flashCastleDamage() {
+    gameAudio.play('castle_hit');
     const { width, height } = this.scale;
     const flash = this.add.rectangle(width / 2, height / 2, width, height, 0xff2244, 0.25).setDepth(200);
     this.tweens.add({ targets: flash, alpha: 0, duration: 240, onComplete: () => flash.destroy() });

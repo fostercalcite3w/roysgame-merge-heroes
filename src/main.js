@@ -3,6 +3,7 @@ import './ui/styles.css';
 import './ui/touch-overlay.css';
 import { TitleScene } from './scenes/TitleScene.js';
 import { BattleScene } from './scenes/BattleScene.js';
+import { GameOverScene } from './scenes/GameOverScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -10,7 +11,7 @@ const config = {
   height: 720,
   parent: document.body,
   backgroundColor: '#0f1020',
-  scene: [TitleScene, BattleScene],
+  scene: [TitleScene, BattleScene, GameOverScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

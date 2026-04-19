@@ -9,6 +9,10 @@ export class BattleScene extends Phaser.Scene {
   constructor() { super('BattleScene'); }
 
   create() {
+    document.getElementById('hud')?.classList.add('is-open');
+    document.getElementById('touch-overlay')?.classList.add('is-open');
+    document.getElementById('gameover-screen')?.classList.remove('is-open');
+
     this.gameState = new GameState();
     this.gameState.start();
 

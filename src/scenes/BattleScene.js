@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { GameState } from '../systems/GameState.js';
-import { ELEMENT_COLORS, CLASS_ICONS, TIER_BADGES, LAYOUT } from '../data/visuals.js';
+import { ELEMENT_COLORS, CLASS_ICONS, TIER_BADGES, LAYOUT, MONSTER_SKIN } from '../data/visuals.js';
+import { STEPS } from '../data/balance.js';
+import { HUD } from '../ui/HUD.js';
 import { TouchOverlay } from '../ui/TouchOverlay.js';
 
 export class BattleScene extends Phaser.Scene {
@@ -26,6 +28,10 @@ export class BattleScene extends Phaser.Scene {
     });
     this.touchOverlay.show();
     this.relayoutTouch();
+    this.hud = new HUD();
+    this.hud.show();
+    this.monsterSprites = new Map();
+    this.refreshHUD();
 
     this.scale.on('resize', this.onResize, this);
     this.scale.on('resize', this.relayoutTouch, this);
@@ -33,6 +39,7 @@ export class BattleScene extends Phaser.Scene {
       this.scale.off('resize', this.onResize, this);
       this.scale.off('resize', this.relayoutTouch, this);
       this.touchOverlay?.destroy();
+      this.hud?.hide();
     });
   }
 
@@ -92,6 +99,13 @@ export class BattleScene extends Phaser.Scene {
 
     if (merges.length > 0) {
       this.time.delayedCall(150, () => this.playMergeAnimations(merges));
+    }
+
+    this.refreshHUD();
+    if (result.triggered) {
+      this.gameState.spawnNextWave();
+      this.renderMonsters();
+      this.refreshHUD();
     }
   }
 
@@ -236,6 +250,62 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
+  refreshHUD() {
+    this.hud.update({
+      wave: this.gameState.wave,
+      hp: this.gameState.castle.hp,
+      maxHp: this.gameState.castle.maxHp,
+      step: this.gameState.stepCounter.count,
+      stepThreshold: STEPS.triggerThreshold,
+    });
+  }
+
+  renderMonsters() {
+    for (const m of this.gameState.monsters) {
+      if (this.monsterSprites.has(m.id)) continue;
+      this.renderOneMonster(m);
+    }
+    const liveIds = new Set(this.gameState.monsters.map((m) => m.id));
+    for (const [id, sprite] of this.monsterSprites.entries()) {
+      if (!liveIds.has(id)) {
+        sprite.destroy();
+        this.monsterSprites.delete(id);
+      }
+    }
+  }
+
+  renderOneMonster(monster) {
+    const L = this.getLayout();
+    const size = Math.floor(L.cellSize * 0.7);
+    const { x, y } = this.monsterPixel(monster);
+    const skin = MONSTER_SKIN[monster.type] ?? MONSTER_SKIN.slime;
+    const container = this.add.container(x, y).setDepth(12);
+    const circle = this.add.circle(0, 0, size * 0.5, skin.fill, 1)
+      .setStrokeStyle(3, skin.stroke, 1);
+    container.add(circle);
+    const emoji = this.add.text(0, 0, skin.emoji, {
+      fontFamily: 'Apple Color Emoji, Noto Color Emoji, sans-serif',
+      fontSize: `${Math.floor(size * 0.55)}px`,
+    }).setOrigin(0.5);
+    container.add(emoji);
+    const hpBar = this.add.rectangle(0, size * 0.55, size, 5, 0x3a0f0f, 1);
+    const hpFill = this.add.rectangle(0, size * 0.55, size, 5, 0xff6b6b, 1);
+    container.add(hpBar);
+    container.add(hpFill);
+    container.hpFill = hpFill;
+    container.hpBar = hpBar;
+    container.maxHp = monster.maxHp;
+    this.monsterSprites.set(monster.id, container);
+  }
+
+  monsterPixel(monster) {
+    const L = this.getLayout();
+    return {
+      x: L.originX + (monster.position.col + 0.5) * L.cellSize,
+      y: L.originY + (monster.position.row + 0.5) * L.cellSize,
+    };
+  }
+
   renderHero(row, col, hero) {
     const L = this.getLayout();
     const { x, y } = this.cellCenter(row, col);
@@ -356,5 +426,14 @@ export class BattleScene extends Phaser.Scene {
     this.drawCursor();
     this.drawSelection();
     this.relayoutTouch();
+    if (this.monsterSprites) {
+      for (const m of this.gameState.monsters) {
+        const sprite = this.monsterSprites.get(m.id);
+        if (sprite) {
+          const { x, y } = this.monsterPixel(m);
+          sprite.setPosition(x, y);
+        }
+      }
+    }
   }
 }
